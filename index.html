@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <title>go go go</title>
+    <meta charset="UTF-8">
+    <style>
+        body { margin: 0; background-color: #000; overflow: hidden; }
+        canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+
+<canvas id="heart"></canvas>
+
+<script>
+    window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function (callback) { window.setTimeout(callback, 1000 / 60); };
+
+    var loaded = false;
+    var init = function () {
+        if (loaded) return;
+        loaded = true;
+        
+        var canvas = document.getElementById('heart');
+        var ctx = canvas.getContext('2d');
+        var width = canvas.width = window.innerWidth;
+        var height = canvas.height = window.innerHeight;
+        var rand = Math.random;
+
+        // Vẽ nền đen ngay lập tức
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, width, height);
+
+        var heartPosition = function (rad) {
+            return [Math.pow(Math.sin(rad), 3), -(15 * Math.cos(rad) - 5 * Math.cos(2 * rad) - 2 * Math.cos(3 * rad) - Math.cos(4 * rad))];
+        };
+        var scaleAndTranslate = function (pos, sx, sy, dx, dy) {
+            return [dx + pos[0] * sx, dy + pos[1] * sy];
+        };
+
+        window.addEventListener('resize', function () {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        });
+
+        var pointsOrigin = [];
+        var dr = 0.1;
+        for (i = 0; i < Math.PI * 2; i += dr) pointsOrigin.push(scaleAndTranslate(heartPosition(i), 300, 18, 0, 0));
+        for (i = 0; i < Math.PI * 2; i += dr) pointsOrigin.push(scaleAndTranslate(heartPosition(i), 210, 13, 0, 0));
+        for (i = 0; i < Math.PI * 2; i += dr) pointsOrigin.push(scaleAndTranslate(heartPosition(i), 130, 8, 0, 0));
+        var heartPointsCount = pointsOrigin.length;
+
+        var targetPoints = [];
+        var pulse = function (kx, ky) {
+            for (var i = 0; i < pointsOrigin.length; i++) {
+                targetPoints[i] = [];
+                targetPoints[i][0] = kx * pointsOrigin[i][0] + width / 2;
+                targetPoints[i][1] = ky * pointsOrigin[i][1] + height / 2;
+            }
+        };
+
+        var e = [];
+        for (var i = 0; i < heartPointsCount; i++) {
+            var x = rand() * width;
+            var y = rand() * height;
+            e[i] = {
+                vx: 0, vy: 0, R: 2, speed: rand() + 5,
+                q: ~~(rand() * heartPointsCount),
+                D: 2 * (i % 2) - 1,
+                force: 0.2 * rand() + 0.7,
+                f: "hsla(340," + ~~(40 * rand() + 60) + "%," + ~~(70 * rand() + 20) + "%,.3)",
+                trace: []
+            };
+            for (var k = 0; k < 100; k++) e[i].trace[k] = {x: x, y: y};
+        }
+
+        var config = { traceK: 0.4, timeDelta: 0.01 };
+        var time = 0;
+
+        // Cấu hình chữ
+        var textEffect = {
+            currentScale: 0.1,
+            targetScale: 1,
+            currentOpacity: 0,
+            glowPhase: 0,
+            delay: 100 // Đợi một chút mới hiện chữ
+        };
+
+        var loop = function () {
+            var n = -Math.cos(time);
+            pulse((1 + n) * .5, (1 + n) * .5);
+            time += ((Math.sin(time)) < 0 ? 9 : (n > 0.8) ? .2 : 1) * config.timeDelta;
+            
+            ctx.fillStyle = "rgba(0,0,0,.1)";
+            ctx.fillRect(0, 0, width, height);
+
+            for (var i = e.length; i--;) {
+                var u = e[i];
+                var q = targetPoints[u.q];
+                var dx = u.trace[0].x - q[0];
+                var dy = u.trace[0].y - q[1];
+                var length = Math.sqrt(dx * dx + dy * dy);
+                if (10 > length) {
+                    if (0.95 < rand()) u.q = ~~(rand() * heartPointsCount);
+                    else {
+                        if (0.99 < rand()) u.D *= -1;
+                        u.q += u.D;
+                        u.q %= heartPointsCount;
+                        if (0 > u.q) u.q += heartPointsCount;
+                    }
+                }
+                u.vx += -dx / length * u.speed;
+                u.vy += -dy / length * u.speed;
+                u.trace[0].x += u.vx; u.trace[0].y += u.vy;
+                u.vx *= u.force; u.vy *= u.force;
+                for (var k = 0; k < u.trace.length - 1;) {
+                    var T = u.trace[k]; var N = u.trace[++k];
+                    N.x -= config.traceK * (N.x - T.x);
+                    N.y -= config.traceK * (N.y - T.y);
+                }
+                ctx.fillStyle = u.f;
+                for (var k = 0; k < u.trace.length; k++) ctx.fillRect(u.trace[k].x, u.trace[k].y, 1, 1);
+            }
+
+            // Vẽ Chữ
+            if (textEffect.delay > 0) {
+                textEffect.delay--;
+            } else {
+                if (textEffect.currentScale < textEffect.targetScale) textEffect.currentScale += 0.005;
+                if (textEffect.currentOpacity < 1) textEffect.currentOpacity += 0.01;
+                
+                textEffect.glowPhase += 0.05;
+                var glow = (Math.sin(textEffect.glowPhase) + 1) / 2;
+
+                ctx.save();
+                ctx.translate(width / 2, height / 2);
+                var s = textEffect.currentScale + (n * 0.1);
+                ctx.scale(s, s);
+                
+                ctx.shadowColor = "rgba(255, 105, 180, " + (glow * 0.8) + ")";
+                ctx.shadowBlur = 10 + (glow * 20);
+                ctx.fillStyle = "rgba(255, 192, 203, " + textEffect.currentOpacity + ")";
+                
+                // Sử dụng font cursive mặc định để an toàn
+                ctx.font = "italic bold 30px cursive";
+                ctx.textAlign = "center";
+
+                ctx.fillText("💞 Happy 100 days, my love 💞", 0, 0);
+                ctx.font = "italic bold 20px cursive";
+                ctx.restore();
+            }
+
+            window.requestAnimationFrame(loop, canvas);
+        };
+        loop();
+    };
+
+    var s = document.readyState;
+    if (s === 'complete' || s === 'loaded' || s === 'interactive') init();
+    else document.addEventListener('DOMContentLoaded', init, false);
+</script>
+</body>
+</html>
