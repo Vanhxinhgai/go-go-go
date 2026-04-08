@@ -9,6 +9,13 @@
     </style>
 </head>
 <body>
+<audio id="mySong" loop>
+    <source src="https://files.catbox.moe/k5c3a8.mp3" type="audio/mpeg">
+</audio>
+
+<div id="music-control" style="position: fixed; top: 20px; right: 20px; z-index: 999; cursor: pointer; font-size: 30px;">
+    🎵
+</div>
 
 <canvas id="heart"></canvas>
 
@@ -43,12 +50,6 @@
         });
 
         var pointsOrigin = [];
-        //var dr = 0.1;
-        //for (i = 0; i < Math.PI * 2; i += dr) pointsOrigin.push(scaleAndTranslate(heartPosition(i), 300, 18, 0, 0));
-        //for (i = 0; i < Math.PI * 2; i += dr) pointsOrigin.push(scaleAndTranslate(heartPosition(i), 210, 13, 0, 0));
-        //for (i = 0; i < Math.PI * 2; i += dr) pointsOrigin.push(scaleAndTranslate(heartPosition(i), 130, 8, 0, 0));
-
-        // --- ĐOẠN MỚI THAY THẾ (PHÓNG TO TIM) ---
 
         // 1. Tự động tính toán kích thước tim dựa trên chiều rộng màn hình
         // Kích thước chuẩn trên máy tính là 210. Trên điện thoại sẽ tự to lên.
@@ -172,6 +173,26 @@
     var s = document.readyState;
     if (s === 'complete' || s === 'loaded' || s === 'interactive') init();
     else document.addEventListener('DOMContentLoaded', init, false);
+    // --- ĐOẠN CODE PHÁT NHẠC ---
+    var song = document.getElementById("mySong");
+    var musicControl = document.getElementById("music-control");
+
+    // Khi nhấn vào biểu tượng nốt nhạc hoặc bất kỳ đâu trên màn hình
+    document.addEventListener('click', function() {
+        if (song.paused) {
+            song.play();
+            musicControl.innerHTML = "🎶"; // Đổi icon khi đang phát
+        } else {
+            // Nếu muốn nhấn lần nữa để dừng nhạc thì dùng dòng dưới
+            // song.pause();
+            // musicControl.innerHTML = "🎵";
+        }
+    }, { once: false }); // once: false để có thể nhấn nhiều lần
+
+    // Riêng điện thoại thường cần chạm vào mới phát được
+    document.addEventListener('touchstart', function() {
+        if (song.paused) song.play();
+    }, { once: true });
 </script>
 </body>
 </html>
