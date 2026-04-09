@@ -33,7 +33,6 @@
         var height = canvas.height = window.innerHeight;
         var rand = Math.random;
 
-        // Vẽ nền đen ngay lập tức
         ctx.fillStyle = "black";
         ctx.fillRect(0, 0, width, height);
 
@@ -50,24 +49,17 @@
         });
 
         var pointsOrigin = [];
+        var baseHeartScale = Math.min(width, height) * 0.45; 
+        var dr = 0.04; // Tăng độ mịn để tim dày hơn
 
-        // 1. Tự động tính toán kích thước tim dựa trên chiều rộng màn hình
-        // Kích thước chuẩn trên máy tính là 210. Trên điện thoại sẽ tự to lên.
-        var baseHeartScale = Math.min(width, height) * 0.45; // Trái tim chiếm khoảng 45% màn hình nhỏ nhất
-
-        // 2. Chỉnh độ chi tiết: dr nhỏ hơn để tim mịn hơn (0.05 là rất mịn)
-        var dr = 0.05; 
-
-        // 3. Vẽ 3 lớp tim với kích thước đã được tính toán (Scale)
+        // Chỉ vẽ 1 lớp tim ngoài cùng cho sạch sẽ
         for (var i = 0; i < Math.PI * 2; i += dr) pointsOrigin.push(scaleAndTranslate(heartPosition(i), baseHeartScale, baseHeartScale / 16, 0, 0));
-        /*for (var i = 0; i < Math.PI * 2; i += dr) pointsOrigin.push(scaleAndTranslate(heartPosition(i), baseHeartScale * 0.7, baseHeartScale * 0.7 / 16, 0, 0));
-        for (var i = 0; i < Math.PI * 2; i += dr) pointsOrigin.push(scaleAndTranslate(heartPosition(i), baseHeartScale * 0.4, baseHeartScale * 0.4 / 16, 0, 0)); */
-        // ---------------------------------------- 
+        
         var heartPointsCount = pointsOrigin.length;
-
         var targetPoints = [];
         var pulse = function (kx, ky) {
-            for (var i = 0; i < pointsOrigin.length; i++) {
+            // Sửa lỗi quan trọng: i chỉ chạy đến heartPointsCount để không bị lỗi mảng
+            for (var i = 0; i < heartPointsCount; i++) {
                 targetPoints[i] = [];
                 targetPoints[i][0] = kx * pointsOrigin[i][0] + width / 2;
                 targetPoints[i][1] = ky * pointsOrigin[i][1] + height / 2;
@@ -75,30 +67,30 @@
         };
 
         var e = [];
-        for (var i = 0; i < heartPointsCount * 2; i++) {
+        // Tăng số lượng hạt lên 2000 để tim cực dày
+        for (var i = 0; i < 2000; i++) {
             var x = rand() * width;
             var y = rand() * height;
             e[i] = {
-                vx: 0, vy: 0, R: 2, speed: rand() + 5,
+                vx: 0, vy: 0, R: 3, speed: rand() + 5,
                 q: ~~(rand() * heartPointsCount),
                 D: 2 * (i % 2) - 1,
                 force: 0.2 * rand() + 0.7,
-                f: "hsla(340," + ~~(40 * rand() + 60) + "%," + ~~(70 * rand() + 20) + "%,.5)",
+                f: "hsla(340," + ~~(40 * rand() + 60) + "%," + ~~(70 * rand() + 20) + "%,.9)", // Tăng độ đậm lên .9
                 trace: []
             };
-            for (var k = 0; k < 100; k++) e[i].trace[k] = {x: x, y: y};
+            for (var k = 0; k < 80; k++) e[i].trace[k] = {x: x, y: y};
         }
 
         var config = { traceK: 0.4, timeDelta: 0.01 };
         var time = 0;
 
-        // Cấu hình chữ
         var textEffect = {
             currentScale: 0.1,
             targetScale: 1,
             currentOpacity: 0,
             glowPhase: 0,
-            delay: 100 // Đợi một chút mới hiện chữ
+            delay: 80 
         };
 
         var loop = function () {
@@ -134,10 +126,10 @@
                     N.y -= config.traceK * (N.y - T.y);
                 }
                 ctx.fillStyle = u.f;
-                for (var k = 0; k < u.trace.length; k++) ctx.fillRect(u.trace[k].x, u.trace[k].y, 1, 1);
+                // Làm hạt to ra để điện thoại nhìn rõ
+                for (var k = 0; k < u.trace.length; k++) ctx.fillRect(u.trace[k].x, u.trace[k].y, 1.5, 1.5);
             }
 
-            // Vẽ Chữ
             if (textEffect.delay > 0) {
                 textEffect.delay--;
             } else {
@@ -153,11 +145,12 @@
                 ctx.scale(s, s);
                 
                 ctx.shadowColor = "rgba(255, 105, 180, " + (glow * 0.8) + ")";
-                ctx.shadowBlur = 10 + (glow * 20);
-                ctx.fillStyle = "rgba(255, 192, 203, " + textEffect.currentOpacity + ")";
+                ctx.shadowBlur = 15;
+                ctx.fillStyle = "rgba(255, 230, 240, " + textEffect.currentOpacity + ")";
                 
-                
-                ctx.font = "italic bold 50px cursive";
+                // Tự động chỉnh cỡ chữ theo màn hình
+                var dynamicFont = Math.max(24, width * 0.07);
+                ctx.font = "italic bold " + dynamicFont + "px cursive";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.fillText("💞 Happy 100 days, my love 💞", 0, 0);
@@ -173,26 +166,18 @@
     var s = document.readyState;
     if (s === 'complete' || s === 'loaded' || s === 'interactive') init();
     else document.addEventListener('DOMContentLoaded', init, false);
-    // --- ĐOẠN CODE PHÁT NHẠC ---
+
     var song = document.getElementById("mySong");
     var musicControl = document.getElementById("music-control");
 
-    // Khi nhấn vào biểu tượng nốt nhạc hoặc bất kỳ đâu trên màn hình
-    document.addEventListener('click', function() {
+    function playMusic() {
         if (song.paused) {
             song.play();
-            musicControl.innerHTML = "🎶"; // Đổi icon khi đang phát
-        } else {
-            // Nếu muốn nhấn lần nữa để dừng nhạc thì dùng dòng dưới
-            // song.pause();
-            // musicControl.innerHTML = "🎵";
+            musicControl.innerHTML = "🎶";
         }
-    }, { once: false }); // once: false để có thể nhấn nhiều lần
-
-    // Riêng điện thoại thường cần chạm vào mới phát được
-    document.addEventListener('touchstart', function() {
-        if (song.paused) song.play();
-    }, { once: true });
+    }
+    document.addEventListener('click', playMusic);
+    document.addEventListener('touchstart', playMusic);
 </script>
 </body>
 </html>
