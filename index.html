@@ -1,198 +1,225 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <title>go go go</title>
-    <meta charset="UTF-8">
-    <style>
-        body { margin: 0; background-color: #000; overflow: hidden; }
-        canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>go go go</title>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap&subset=vietnamese" rel="stylesheet">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+
+  /* Vùng chữ giữa màn hình */
+  #credits {
+    position: fixed; inset: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 8%; box-sizing: border-box; text-align: center;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,.55) 0%, rgba(0,0,0,0) 65%);
+  }
+  #line {
+    font-family: 'Dancing Script', cursive, Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(24px, 6.5vw, 44px);
+    line-height: 1.5;
+    color: #ffd6e4;
+    text-shadow: 0 0 10px rgba(255,105,180,.9), 0 0 28px rgba(255,20,120,.55), 0 2px 6px #000;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(18px);
+    filter: blur(6px);
+    transition: opacity 1.8s ease, transform 1.8s ease, filter 1.8s ease;
+  }
+  #line.show { opacity: 1; transform: translateY(0); filter: blur(0); }
+  #line.hide { opacity: 0; transform: translateY(-14px); filter: blur(4px); transition-duration: 1.4s; }
+  #line.final { animation: beat 1.6s ease-in-out infinite; }
+  @keyframes beat { 0%,100% { text-shadow: 0 0 10px rgba(255,105,180,.9), 0 0 28px rgba(255,20,120,.55), 0 2px 6px #000; }
+                    50% { text-shadow: 0 0 18px rgba(255,105,180,1), 0 0 48px rgba(255,20,120,.9), 0 2px 6px #000; } }
+
+  /* Màn hình chạm để bắt đầu */
+  #start {
+    position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    background: rgba(0,0,0,.72); color: #ffc0d6; cursor: pointer;
+    font-family: 'Dancing Script', cursive, Georgia, serif; font-size: clamp(24px, 7vw, 36px);
+    text-shadow: 0 0 14px rgba(255,105,180,.9);
+    transition: opacity 1.2s ease;
+  }
+  #start .h { font-size: 56px; animation: beat2 1.2s ease-in-out infinite; }
+  @keyframes beat2 { 0%,100% { transform: scale(1); } 50% { transform: scale(1.25); } }
+  #start.gone { opacity: 0; pointer-events: none; }
+
+  #music-control {
+    position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px;
+    z-index: 30; cursor: pointer; font-size: 28px; opacity: .85;
+  }
+</style>
 </head>
 <body>
 <audio id="mySong" loop>
-    <source src="https://www.image2url.com/r2/default/audio/1790779803740-cdd2247f-ea9c-4b0a-98a6-c7c8fa829fb7.mp3" type="audio/mpeg">
+  <source src="https://www.image2url.com/r2/default/audio/1790780287118-b58f3820-acde-4c8f-9f5b-0a35927f7dbd.mp3" type="audio/mpeg">
 </audio>
 
-<div id="music-control" style="position: fixed; top: 20px; right: 20px; z-index: 999; cursor: pointer; font-size: 30px;">
-    🎵
-</div>
-
+<div id="music-control">🎵</div>
 <canvas id="heart"></canvas>
+<div id="credits"><div id="line"></div></div>
+<div id="start"><div class="h">🎁</div><div>Chạm vào màn hình nhé…</div></div>
 
 <script>
-    window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function (callback) { window.setTimeout(callback, 1000 / 60); };
+window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function (cb) { window.setTimeout(cb, 1000 / 60); };
 
-    var loaded = false;
-    var init = function () {
-        if (loaded) return;
-        loaded = true;
-        
-        var canvas = document.getElementById('heart');
-        var ctx = canvas.getContext('2d');
-        var width = canvas.width = window.innerWidth;
-        var height = canvas.height = window.innerHeight;
-        var rand = Math.random;
+/* ================= TRÁI TIM ================= */
+(function () {
+  var canvas = document.getElementById('heart');
+  var ctx = canvas.getContext('2d');
+  var width = canvas.width = window.innerWidth;
+  var height = canvas.height = window.innerHeight;
+  var rand = Math.random;
+  ctx.fillStyle = "black"; ctx.fillRect(0, 0, width, height);
 
-        // Vẽ nền đen ngay lập tức
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, width, height);
+  var heartPosition = function (rad) {
+    return [Math.pow(Math.sin(rad), 3), -(15 * Math.cos(rad) - 5 * Math.cos(2 * rad) - 2 * Math.cos(3 * rad) - Math.cos(4 * rad))];
+  };
+  var scaleAndTranslate = function (pos, sx, sy, dx, dy) { return [dx + pos[0] * sx, dy + pos[1] * sy]; };
 
-        var heartPosition = function (rad) {
-            return [Math.pow(Math.sin(rad), 3), -(15 * Math.cos(rad) - 5 * Math.cos(2 * rad) - 2 * Math.cos(3 * rad) - Math.cos(4 * rad))];
-        };
-        var scaleAndTranslate = function (pos, sx, sy, dx, dy) {
-            return [dx + pos[0] * sx, dy + pos[1] * sy];
-        };
+  window.addEventListener('resize', function () {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
 
-        window.addEventListener('resize', function () {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        });
+  var baseHeartScale = Math.min(width, height) * 0.45;
+  var dr = 0.05;
+  var pointsOrigin = [];
+  for (var i = 0; i < Math.PI * 2; i += dr) pointsOrigin.push(scaleAndTranslate(heartPosition(i), baseHeartScale, baseHeartScale / 16, 0, 0));
+  var heartPointsCount = pointsOrigin.length;
 
-        var pointsOrigin = [];
+  var targetPoints = [];
+  var pulse = function (kx, ky) {
+    for (var i = 0; i < pointsOrigin.length; i++) {
+      targetPoints[i] = [kx * pointsOrigin[i][0] + width / 2, ky * pointsOrigin[i][1] + height / 2];
+    }
+  };
 
-        // 1. Tự động tính toán kích thước tim dựa trên chiều rộng màn hình
-        // Kích thước chuẩn trên máy tính là 210. Trên điện thoại sẽ tự to lên.
-        var baseHeartScale = Math.min(width, height) * 0.45; // Trái tim chiếm khoảng 45% màn hình nhỏ nhất
-
-        // 2. Chỉnh độ chi tiết: dr nhỏ hơn để tim mịn hơn (0.05 là rất mịn)
-        var dr = 0.05; 
-
-        // 3. Vẽ 3 lớp tim với kích thước đã được tính toán (Scale)
-        for (var i = 0; i < Math.PI * 2; i += dr) pointsOrigin.push(scaleAndTranslate(heartPosition(i), baseHeartScale, baseHeartScale / 16, 0, 0));
-        /*for (var i = 0; i < Math.PI * 2; i += dr) pointsOrigin.push(scaleAndTranslate(heartPosition(i), baseHeartScale * 0.7, baseHeartScale * 0.7 / 16, 0, 0));
-        for (var i = 0; i < Math.PI * 2; i += dr) pointsOrigin.push(scaleAndTranslate(heartPosition(i), baseHeartScale * 0.4, baseHeartScale * 0.4 / 16, 0, 0)); */
-        // ---------------------------------------- 
-        var heartPointsCount = pointsOrigin.length;
-
-        var targetPoints = [];
-        var pulse = function (kx, ky) {
-            for (var i = 0; i < pointsOrigin.length; i++) {
-                targetPoints[i] = [];
-                targetPoints[i][0] = kx * pointsOrigin[i][0] + width / 2;
-                targetPoints[i][1] = ky * pointsOrigin[i][1] + height / 2;
-            }
-        };
-
-        var e = [];
-        for (var i = 0; i < heartPointsCount * 2; i++) {
-            var x = rand() * width;
-            var y = rand() * height;
-            e[i] = {
-                vx: 0, vy: 0, R: 2, speed: rand() + 5,
-                q: ~~(rand() * heartPointsCount),
-                D: 2 * (i % 2) - 1,
-                force: 0.2 * rand() + 0.7,
-                f: "hsla(340," + ~~(40 * rand() + 60) + "%," + ~~(70 * rand() + 20) + "%,.5)",
-                trace: []
-            };
-            for (var k = 0; k < 100; k++) e[i].trace[k] = {x: x, y: y};
-        }
-
-        var config = { traceK: 0.4, timeDelta: 0.01 };
-        var time = 0;
-
-        // Cấu hình chữ
-        var textEffect = {
-            currentScale: 0.1,
-            targetScale: 1,
-            currentOpacity: 0,
-            glowPhase: 0,
-            delay: 100 // Đợi một chút mới hiện chữ
-        };
-
-        var loop = function () {
-            var n = -Math.cos(time);
-            pulse((1 + n) * .5, (1 + n) * .5);
-            time += ((Math.sin(time)) < 0 ? 9 : (n > 0.8) ? .2 : 1) * config.timeDelta;
-            
-            ctx.fillStyle = "rgba(0,0,0,.1)";
-            ctx.fillRect(0, 0, width, height);
-
-            for (var i = e.length; i--;) {
-                var u = e[i];
-                var q = targetPoints[u.q];
-                var dx = u.trace[0].x - q[0];
-                var dy = u.trace[0].y - q[1];
-                var length = Math.sqrt(dx * dx + dy * dy);
-                if (10 > length) {
-                    if (0.95 < rand()) u.q = ~~(rand() * heartPointsCount);
-                    else {
-                        if (0.99 < rand()) u.D *= -1;
-                        u.q += u.D;
-                        u.q %= heartPointsCount;
-                        if (0 > u.q) u.q += heartPointsCount;
-                    }
-                }
-                u.vx += -dx / length * u.speed;
-                u.vy += -dy / length * u.speed;
-                u.trace[0].x += u.vx; u.trace[0].y += u.vy;
-                u.vx *= u.force; u.vy *= u.force;
-                for (var k = 0; k < u.trace.length - 1;) {
-                    var T = u.trace[k]; var N = u.trace[++k];
-                    N.x -= config.traceK * (N.x - T.x);
-                    N.y -= config.traceK * (N.y - T.y);
-                }
-                ctx.fillStyle = u.f;
-                for (var k = 0; k < u.trace.length; k++) ctx.fillRect(u.trace[k].x, u.trace[k].y, 1, 1);
-            }
-
-            // Vẽ Chữ
-            if (textEffect.delay > 0) {
-                textEffect.delay--;
-            } else {
-                if (textEffect.currentScale < textEffect.targetScale) textEffect.currentScale += 0.005;
-                if (textEffect.currentOpacity < 1) textEffect.currentOpacity += 0.01;
-                
-                textEffect.glowPhase += 0.05;
-                var glow = (Math.sin(textEffect.glowPhase) + 1) / 2;
-
-                ctx.save();
-                ctx.translate(width / 2, height / 2);
-                var s = textEffect.currentScale + (n * 0.1);
-                ctx.scale(s, s);
-                
-                ctx.shadowColor = "rgba(255, 105, 180, " + (glow * 0.8) + ")";
-                ctx.shadowBlur = 10 + (glow * 20);
-                ctx.fillStyle = "rgba(255, 192, 203, " + textEffect.currentOpacity + ")";
-                
-                
-                ctx.font = "italic bold 50px cursive";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText("💞 Chúc mừng sinh nhật, my love 💞", 0, 0);
-                
-                ctx.restore();
-            }
-
-            window.requestAnimationFrame(loop, canvas);
-        };
-        loop();
+  var e = [];
+  for (var i = 0; i < heartPointsCount * 2; i++) {
+    var x = rand() * width, y = rand() * height;
+    e[i] = {
+      vx: 0, vy: 0, R: 2, speed: rand() + 5,
+      q: ~~(rand() * heartPointsCount), D: 2 * (i % 2) - 1,
+      force: 0.2 * rand() + 0.7,
+      f: "hsla(340," + ~~(40 * rand() + 60) + "%," + ~~(70 * rand() + 20) + "%,.5)",
+      trace: []
     };
+    for (var k = 0; k < 100; k++) e[i].trace[k] = { x: x, y: y };
+  }
 
-    var s = document.readyState;
-    if (s === 'complete' || s === 'loaded' || s === 'interactive') init();
-    else document.addEventListener('DOMContentLoaded', init, false);
-    // --- ĐOẠN CODE PHÁT NHẠC ---
-    var song = document.getElementById("mySong");
-    var musicControl = document.getElementById("music-control");
+  var config = { traceK: 0.4, timeDelta: 0.01 };
+  var time = 0;
 
-    // Khi nhấn vào biểu tượng nốt nhạc hoặc bất kỳ đâu trên màn hình
-    document.addEventListener('click', function() {
-        if (song.paused) {
-            song.play();
-            musicControl.innerHTML = "🎶"; // Đổi icon khi đang phát
-        } else {
-            // Nếu muốn nhấn lần nữa để dừng nhạc thì dùng dòng dưới
-            // song.pause();
-            // musicControl.innerHTML = "🎵";
+  var loop = function () {
+    var n = -Math.cos(time);
+    pulse((1 + n) * .5, (1 + n) * .5);
+    time += ((Math.sin(time)) < 0 ? 9 : (n > 0.8) ? .2 : 1) * config.timeDelta;
+
+    ctx.fillStyle = "rgba(0,0,0,.1)";
+    ctx.fillRect(0, 0, width, height);
+
+    for (var i = e.length; i--;) {
+      var u = e[i];
+      var q = targetPoints[u.q];
+      var dx = u.trace[0].x - q[0];
+      var dy = u.trace[0].y - q[1];
+      var length = Math.sqrt(dx * dx + dy * dy);
+      if (10 > length) {
+        if (0.95 < rand()) u.q = ~~(rand() * heartPointsCount);
+        else {
+          if (0.99 < rand()) u.D *= -1;
+          u.q += u.D; u.q %= heartPointsCount;
+          if (0 > u.q) u.q += heartPointsCount;
         }
-    }, { once: false }); // once: false để có thể nhấn nhiều lần
+      }
+      u.vx += -dx / length * u.speed;
+      u.vy += -dy / length * u.speed;
+      u.trace[0].x += u.vx; u.trace[0].y += u.vy;
+      u.vx *= u.force; u.vy *= u.force;
+      for (var k = 0; k < u.trace.length - 1;) {
+        var T = u.trace[k]; var N = u.trace[++k];
+        N.x -= config.traceK * (N.x - T.x);
+        N.y -= config.traceK * (N.y - T.y);
+      }
+      ctx.fillStyle = u.f;
+      for (var k = 0; k < u.trace.length; k++) ctx.fillRect(u.trace[k].x, u.trace[k].y, 1, 1);
+    }
+    window.requestAnimationFrame(loop);
+  };
+  loop();
+})();
 
-    // Riêng điện thoại thường cần chạm vào mới phát được
-    document.addEventListener('touchstart', function() {
-        if (song.paused) song.play();
-    }, { once: true });
+/* ================= CHỮ KIỂU CUỐI PHIM ================= */
+// Mỗi phần tử là 1 "cảnh" chữ. Sửa nội dung / thời gian ở đây.
+// hold = số mili-giây chữ đứng yên trước khi mờ đi (tự tính theo độ dài nếu bỏ trống)
+var scenes = [
+  { lines: ["🎂 Happy birthday, anh bé iu của em 🎂"], hold: 3800 },
+  { lines: ["Chúc anh tuổi mới thật nhiều niềm vui😊", "luôn bình an, vui vẻ và hạnh phúc 🥰"], hold: 4800 },
+  { lines: ["Mong rằng dù có gặp chuyện gì,", "anh cũng luôn mạnh mẽ, kiên cường💪"], hold: 4500 },
+  { lines: ["và luôn giữ được nụ cười trên môi😁"], hold: 3800 },
+  { lines: ["Tuổi mới thật nhiều điều tốt đẹp nha anh ", "🍀🍀🍀🍀🍀🍀🍀"], hold: 4000 },
+  { lines: ["Yêu anh ❤️"], final: true }
+];
+
+var lineEl = document.getElementById('line');
+var FADE_IN = 1800, FADE_OUT = 1400, GAP = 700;
+
+var MAX_FONT = 44, MIN_FONT = 15;
+
+function fitText() {
+  var avail = window.innerWidth * 0.94;
+  lineEl.style.whiteSpace = 'nowrap';
+  lineEl.style.fontSize = MAX_FONT + 'px';
+  var w = lineEl.getBoundingClientRect().width;
+  var size = w > avail ? MAX_FONT * avail / w : MAX_FONT;
+  if (size < MIN_FONT) {           // quá hẹp: cho phép xuống dòng để vẫn đọc được
+    size = MIN_FONT;
+    lineEl.style.whiteSpace = 'normal';
+  }
+  lineEl.style.fontSize = size + 'px';
+}
+
+function playScene(i) {
+  if (i >= scenes.length) return;
+  var s = scenes[i];
+  lineEl.className = '';
+  lineEl.innerHTML = s.lines.join('<br>');
+  fitText();
+  void lineEl.offsetWidth;
+  lineEl.className = 'show';
+  if (s.final) { setTimeout(function () { lineEl.className = 'show final'; }, FADE_IN); return; }
+  var hold = s.hold || 4000;
+  setTimeout(function () {
+    lineEl.className = 'hide';
+    setTimeout(function () { playScene(i + 1); }, FADE_OUT + GAP);
+  }, FADE_IN + hold);
+}
+
+/* ================= NHẠC + BẮT ĐẦU ================= */
+var song = document.getElementById("mySong");
+var musicControl = document.getElementById("music-control");
+var startScreen = document.getElementById("start");
+var started = false;
+
+startScreen.addEventListener('click', function () {
+  if (started) return;
+  started = true;
+  startScreen.classList.add('gone');
+  song.play().then(function () { musicControl.innerHTML = "🎶"; }).catch(function () {});
+  setTimeout(function () { playScene(0); }, 1500);
+});
+
+musicControl.addEventListener('click', function (ev) {
+  ev.stopPropagation();
+  if (song.paused) { song.play(); musicControl.innerHTML = "🎶"; }
+  else { song.pause(); musicControl.innerHTML = "🎵"; }
+});
 </script>
 </body>
 </html>
